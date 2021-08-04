@@ -47,7 +47,6 @@ UserSchema.pre<IUser>("save", function(next) {
   }
 });
 
-
 UserSchema.pre("findOneAndUpdate", async function() {
   const docToUpdate = await this.findOne(this.getQuery());
 

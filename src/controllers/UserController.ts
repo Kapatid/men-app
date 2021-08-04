@@ -2,7 +2,6 @@ import User, { IUser } from '../models/User';
 
 import express, { Request, Response } from 'express';
 import { CallbackError, isValidObjectId } from 'mongoose';
-import bcrypt from "bcryptjs";
 
 const router = express.Router();
 
@@ -11,9 +10,7 @@ router.get('/',
   async (req: Request, res: Response) => {
 
     await User.find((error: CallbackError, docs: IUser) => {
-      !error ? res.send(docs) :
-      res.status(500)
-         .send(`ERROR: ${error.message}`);
+      handleUserError(error, docs, res, 500);
     });
   }
 );
@@ -23,10 +20,9 @@ router.get('/:id',
   async (req: Request, res: Response) => {
 
     if (idExists(req, res) === true) {
-      await User.findById(req.params.id, (error: CallbackError, docs: IUser) => {
-        !error ? res.send(docs) :
-        res.status(500)
-           .send(`ERROR: ${error.message}`);
+      await User.findById(req.params.id, 
+        (error: CallbackError, docs: IUser) => {
+          handleUserError(error, docs, res, 500);
       });
     }
   }
@@ -43,12 +39,7 @@ router.post('/',
     });
 
     user.save((error: CallbackError, docs: IUser) => {
-      if (!error) res.send(docs);
-
-      else {
-        res.status(500)
-           .send(`ERROR: ${error.message}`);
-      }
+      handleUserError(error, docs, res, 500);
     }); 
   }
 );
@@ -67,12 +58,7 @@ router.put('/:id',
       await User.findByIdAndUpdate(req.params.id,
         { $set: user }, 
         (error: CallbackError, docs: IUser | null) => {
-          if (!error) res.send(docs);
-
-          else {
-            res.status(500)
-               .send(`ERROR: ${error.message}`);
-          }
+          handleUserError(error, docs, res, 500);
         });
     }
   }
@@ -86,23 +72,29 @@ router.delete('/:id',
       await User.findByIdAndDelete(req.params.id, 
         {}, 
         (error: CallbackError, docs: IUser | null) => {
-        if (!error) res.send(docs);
-
-        else {
-          res.status(500)
-             .send(`ERROR: ${error}`);
-        }
+          handleUserError(error, docs, res, 500);
       });
     }
   }
 );
 
 function idExists(req: Request, res: Response): boolean | Response {
-  if (!isValidObjectId(req.params.id)) {
-    return res.status(404).send(`User with id ${req.params.id} not found`);
-  }
+  if (isValidObjectId(req.params.id)) return true;
       
-  else return true;
+  else return res.status(404)
+                 .send(`[ERROR] User with id ${req.params.id} not found`);
+}
+
+function handleUserError(
+    error: CallbackError, 
+    docs: IUser | null,
+    res: Response, 
+    status: number
+  ): void {
+
+  if (!error) res.send(docs);
+
+  else res.status(status).send(`[ERROR] ${error.message}`);
 }
 
 export default router;
